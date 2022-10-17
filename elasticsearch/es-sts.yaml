@@ -4,7 +4,7 @@ metadata:
   name: es-cluster
 spec:
   serviceName: elasticsearch
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: elasticsearch
@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: elasticsearch
-        image: docker.elastic.co/elasticsearch/elasticsearch:7.5.0
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.17.6
         resources:
             limits:
               cpu: 1000m
@@ -29,7 +29,7 @@ spec:
           name: inter-node
           protocol: TCP
         volumeMounts:
-        - name: data
+        - name: es-stateful-volume-claim
           mountPath: /usr/share/elasticsearch/data
         env:
           - name: cluster.name
@@ -39,11 +39,22 @@ spec:
               fieldRef:
                 fieldPath: metadata.name
           - name: discovery.seed_hosts
-            value: "es-cluster-0.elasticsearch,es-cluster-1.elasticsearch,es-cluster-2.elasticsearch"
+            value: metadata.name
           - name: cluster.initial_master_nodes
-            value: "es-cluster-0,es-cluster-1,es-cluster-2"
+            value: metadata.name
+          # If use > 1 replica
+          # - name: discovery.seed_hosts
+          #   value: "es-cluster-0.elasticsearch,es-cluster-1.elasticsearch,es-cluster-2.elasticsearch"
+          # - name: cluster.initial_master_nodes
+          #   value: "es-cluster-0,es-cluster-1,es-cluster-2"
           - name: ES_JAVA_OPTS
-            value: "-Xms512m -Xmx512m"
+            value: "-Xms512m -Xmx512m" # minimum and maximum Java heap size, recommend setting both to 50% of system RAM
+          - name: discovery.type
+            value: single-node
+          - name: xpack.security.enabled
+            value: "true"
+          - name: ELASTIC_PASSWORD
+            value: petrosea
       initContainers:
       - name: fix-permissions
         image: busybox
@@ -51,7 +62,7 @@ spec:
         securityContext:
           privileged: true
         volumeMounts:
-        - name: data
+        - name: es-stateful-volume-claim
           mountPath: /usr/share/elasticsearch/data
       - name: increase-vm-max-map
         image: busybox
@@ -65,12 +76,14 @@ spec:
           privileged: true
   volumeClaimTemplates:
   - metadata:
-      name: data
+      name: es-stateful-volume-claim
       labels:
         app: elasticsearch
     spec:
-      accessModes: [ "ReadWriteOnce" ]
-      # storageClassName: ""
+      accessModes:
+        - ReadWriteOnce
+      storageClassName: ""
+      volumeName: es-stateful-volume
       resources:
         requests:
-          storage: 3Gi
+          storage: 5Gi

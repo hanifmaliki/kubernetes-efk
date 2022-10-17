@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: kibana
-        image: docker.elastic.co/kibana/kibana:7.5.0
+        image: docker.elastic.co/kibana/kibana:7.17.6
         resources:
           limits:
             cpu: 1000m
@@ -25,5 +25,9 @@ spec:
         env:
           - name: ELASTICSEARCH_URL
             value: http://elasticsearch:9200
+          - name: ELASTICSEARCH_USERNAME
+            value: elastic
+          - name: ELASTICSEARCH_PASSWORD
+            value: petrosea
         ports:
         - containerPort: 5601
